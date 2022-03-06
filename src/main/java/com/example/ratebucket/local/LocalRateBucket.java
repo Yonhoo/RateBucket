@@ -1,16 +1,30 @@
 package com.example.ratebucket.local;
 
-import com.example.util.TimeMeter;
-
 public class LocalRateBucket extends AbstractRateBucket {
 
     @Override
     public RateBucket buildRateBucket(int limitPerSecond) {
+        
+        getTimeMeter();
+
+
+
         return null;
     }
 
+
+
     @Override
-    public TimeMeter getTimeMeter() {
-        return TimeMeter.SYSTEM_NANOTIME;
+    public boolean tryConsume(int tokens) {
+        // TODO Auto-generated method stub
+        return false;
     }
+
+    @Override
+    public void tryConsumeWithBlock() {
+        // TODO Auto-generated method stub
+        
+    }
+
+
 }
