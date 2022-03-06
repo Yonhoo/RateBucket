@@ -1,27 +1,57 @@
 package com.example.ratebucket.local;
 
+import java.time.Duration;
 
+import com.example.ratebucket.util.TimeMeter;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public abstract class AbstractRateBucket implements RateBucket {
 
     // TODO thread safety
-    long limitPerSecond;
-    long availableTokens;
+    private long refillPeriodNanos;
+    private long capacity;
+    private long refillTokens;
+    private BandWith bandWith;
+    private TimeMeter timeMeter;
 
-    public AbstractRateBucket() {
-        this.limitPerSecond = 0;
-        this.availableTokens = 0;
+    public AbstractRateBucket(long limitPerSecond, TimeMeter timeMeter) {
+        this.refillPeriodNanos = Duration.ofSeconds(1).toNanos();
+        this.capacity = limitPerSecond;
+        this.refillTokens = limitPerSecond;
+        bandWith = new BandWith(timeMeter.currentTimeNanos(), limitPerSecond);
+        this.timeMeter = timeMeter;
     }
 
-    @Override
+    public long getCurrentTimeNanos() {
+        return timeMeter.currentTimeNanos();
+    }
+
+    public long getLaseRefillNanos() {
+        return bandWith.getLastRefillNanos();
+    }
+
     public long getAvailableTokens() {
-        return availableTokens;
+        return bandWith.getAvailableTokens();
     }
 
-    @Override
-    public RateBucket getRateBucket(int limitPerSecond) {
-        return buildRateBucket(limitPerSecond);
+    public long getRoundingError() {
+        return bandWith.getRoundingError();
     }
 
-    public abstract RateBucket buildRateBucket(int limitPerSecond);
+    public void setLastRefillNanos(long currentRefillNanos) {
+        bandWith.setLastRefillNanos(currentRefillNanos);
+    }
+
+    public void setAvailableTokens(long availableTokens) {
+        bandWith.setLastRefillNanos(availableTokens);
+    }
+
+    public void setRoundingError(long roundingError) {
+        bandWith.setRoundingError(roundingError);
+    }
 
 }
