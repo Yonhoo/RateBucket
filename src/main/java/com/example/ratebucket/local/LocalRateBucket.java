@@ -3,9 +3,6 @@ package com.example.ratebucket.local;
 import com.example.ratebucket.util.BucketExceptions;
 import com.example.ratebucket.util.TimeMeter;
 
-import lombok.Getter;
-
-@Getter
 public class LocalRateBucket extends AbstractRateBucket {
 
     public LocalRateBucket(long limitPerSecond, TimeMeter timeMeter) {
@@ -20,27 +17,24 @@ public class LocalRateBucket extends AbstractRateBucket {
         }
 
         // compute available tokens
-        long lastTimeRefillNanos = getLaseRefillNanos();
+        long lastTimeRefillNanos = getLastRefillNanos();
         long currentAvailableTokens = getAvailableTokens();
         long currentTimeNanos = getCurrentTimeNanos();
         long refillPeriodNanos = getRefillPeriodNanos();
         long refillTokens = getRefillTokens();
-
-        if (currentTimeNanos <= lastTimeRefillNanos) {
-            return false;
-        } else {
-            this.setLastRefillNanos(currentTimeNanos);
-        }
         long newAvailableTokens = currentAvailableTokens;
         long durationSinceLastRefillNanos = currentTimeNanos - lastTimeRefillNanos;
 
-        if (durationSinceLastRefillNanos > refillPeriodNanos) {
-            long periods = durationSinceLastRefillNanos / refillPeriodNanos;
-            if (periods > 0) {
-                newAvailableTokens = addExact(multipleExact(periods, refillTokens), newAvailableTokens);
-            }
-            durationSinceLastRefillNanos %= refillPeriodNanos;
+        // duration < period : return false
+        if (durationSinceLastRefillNanos < refillPeriodNanos) {
+            return false;
         }
+
+        long periods = durationSinceLastRefillNanos / refillPeriodNanos;
+        if (periods > 0) {
+            newAvailableTokens = addExact(multipleExact(periods, refillTokens), newAvailableTokens);
+        }
+        durationSinceLastRefillNanos %= refillPeriodNanos;
 
         long roundingError = getRoundingError();
         long divided = multipleExact(durationSinceLastRefillNanos, refillTokens);
@@ -62,16 +56,20 @@ public class LocalRateBucket extends AbstractRateBucket {
         long newSize = newAvailableTokens - tokens;
         if (getCapacity() <= newSize) {
             resetBandWith();
-            return true;
         }
         if (currentAvailableTokens > newSize) {
             resetBandWith();
-            return true;
         }
         setAvailableTokens(newSize);
         setRoundingError(roundingError);
 
-        return true;
+        newSize = getAvailableTokens();
+        if (newSize >= tokens) {
+            setAvailableTokens(newSize - tokens);
+            setLastRefillNanos(currentTimeNanos);
+            return true;
+        }
+        return false;
     }
 
     private long addExact(long a, long b) {

@@ -30,7 +30,8 @@ public abstract class AbstractRateBucket implements RateBucket {
         return timeMeter.currentTimeNanos();
     }
 
-    public long getLaseRefillNanos() {
+    @Override
+    public long getLastRefillNanos() {
         return bandWith.getLastRefillNanos();
     }
 
@@ -47,7 +48,7 @@ public abstract class AbstractRateBucket implements RateBucket {
     }
 
     public void setAvailableTokens(long availableTokens) {
-        bandWith.setLastRefillNanos(availableTokens);
+        bandWith.setAvailableTokens(availableTokens);
     }
 
     public void setRoundingError(long roundingError) {
