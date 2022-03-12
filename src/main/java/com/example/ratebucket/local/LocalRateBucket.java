@@ -54,6 +54,11 @@ public class LocalRateBucket extends AbstractRateBucket {
         }
 
         long newSize = newAvailableTokens - tokens;
+
+        if (newSize < 0) {
+            return false;
+        }
+
         if (getCapacity() <= newSize) {
             resetBandWith();
         }
@@ -62,14 +67,8 @@ public class LocalRateBucket extends AbstractRateBucket {
         }
         setAvailableTokens(newSize);
         setRoundingError(roundingError);
-
-        newSize = getAvailableTokens();
-        if (newSize >= tokens) {
-            setAvailableTokens(newSize - tokens);
-            setLastRefillNanos(currentTimeNanos);
-            return true;
-        }
-        return false;
+        setLastRefillNanos(currentTimeNanos);
+        return true;
     }
 
     private long addExact(long a, long b) {
