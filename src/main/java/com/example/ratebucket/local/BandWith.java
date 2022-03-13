@@ -2,7 +2,7 @@ package com.example.ratebucket.local;
 
 public class BandWith {
     private static final int BANDWIDTH_SIZE = 3;
-    long[] bucketData;
+    private volatile long[] bucketData;
 
     public BandWith(long lastRefillNanos, long availableTokens) {
         bucketData = new long[3];

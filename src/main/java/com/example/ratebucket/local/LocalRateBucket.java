@@ -3,6 +3,9 @@ package com.example.ratebucket.local;
 import com.example.ratebucket.util.BucketExceptions;
 import com.example.ratebucket.util.TimeMeter;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class LocalRateBucket extends AbstractRateBucket {
 
     public LocalRateBucket(long limitPerSecond, TimeMeter timeMeter) {
@@ -25,12 +28,13 @@ public class LocalRateBucket extends AbstractRateBucket {
         long newAvailableTokens = currentAvailableTokens;
         long durationSinceLastRefillNanos = currentTimeNanos - lastTimeRefillNanos;
 
-        // duration < period : return false
-        if (durationSinceLastRefillNanos < refillPeriodNanos) {
+        // duration < period and tokens not enough: return false
+        if (currentAvailableTokens < tokens && durationSinceLastRefillNanos < refillPeriodNanos) {
             return false;
         }
 
         long periods = durationSinceLastRefillNanos / refillPeriodNanos;
+
         if (periods > 0) {
             newAvailableTokens = addExact(multipleExact(periods, refillTokens), newAvailableTokens);
         }
@@ -54,7 +58,6 @@ public class LocalRateBucket extends AbstractRateBucket {
         }
 
         long newSize = newAvailableTokens - tokens;
-
         if (newSize < 0) {
             return false;
         }
@@ -62,9 +65,7 @@ public class LocalRateBucket extends AbstractRateBucket {
         if (getCapacity() <= newSize) {
             resetBandWith();
         }
-        if (currentAvailableTokens > newSize) {
-            resetBandWith();
-        }
+
         setAvailableTokens(newSize);
         setRoundingError(roundingError);
         setLastRefillNanos(currentTimeNanos);
