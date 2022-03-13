@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public abstract class AbstractRateBucket implements RateBucket {
 
-    // TODO thread safety
+    // TODO lock free
     private long refillPeriodNanos;
     private long capacity;
     private long refillTokens;

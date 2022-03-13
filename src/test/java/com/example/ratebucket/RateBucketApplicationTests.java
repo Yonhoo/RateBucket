@@ -3,9 +3,15 @@ package com.example.ratebucket;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
+import com.example.TestUtil.ConsumptionScenario;
+import com.example.ratebucket.local.LocalRateBucketBuilder;
 import com.example.ratebucket.local.RateBucket;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import lombok.extern.slf4j.Slf4j;
@@ -48,10 +54,10 @@ class RateBucketApplicationTests {
                 consumeNums++;
                 assertThat(System.nanoTime() - lastRejectConsumeTime).isGreaterThan(Duration.ofSeconds(1).toNanos());
             } else {
-                assertThat(consumeNums).isEqualTo(5);
                 lastRejectConsumeTime = System.nanoTime();
+                assertThat(consumeNums).isEqualTo(5);
                 consumeNums = 0;
-                Thread.sleep(Duration.ofSeconds(1).toMillis());
+                Thread.sleep(Duration.ofSeconds(2).toMillis());
             }
         }
     }
@@ -100,7 +106,7 @@ class RateBucketApplicationTests {
                     consumeNums = 0;
                     Thread.sleep(Duration.ofSeconds(1).toMillis());
                 } catch (Exception e) {
-                   return false;
+                    return false;
                 }
 
             }
@@ -108,4 +114,32 @@ class RateBucketApplicationTests {
         return true;
     }
 
+    @Nested
+    class LocalRateucketTest {
+        private LocalRateBucketBuilder bucket = RateBucket.Builder()
+                .withLimitPerSecond(10);
+
+        private double permittedRatePerSecond = 10;
+
+        private void test5Seconds(Supplier<RateBucket> bucket, int threadCount, Function<RateBucket, Long> action) throws Throwable {
+            ConsumptionScenario scenario = new ConsumptionScenario(threadCount, TimeUnit.SECONDS.toNanos(5), bucket, action, permittedRatePerSecond);
+            scenario.executeAndValidateRate();
+        }
+
+        @Test
+        void should_try_consume_unsafety() throws Throwable{
+            int threadCount = 1; // multi unsafety
+            Function<RateBucket, Long> action = b -> b.tryConsume(1)? 1L : 0L;
+            test5Seconds(() -> bucket.build(), threadCount, action);
+        }
+
+        @Test
+        void should_try_consume_with_lock() throws Throwable{
+            int threadCount = 4;
+            Function<RateBucket, Long> action = b -> b.tryConsume(1)? 1L : 0L;
+            test5Seconds(() -> bucket.withThreadSafety().build(), threadCount, action);
+        }
+
+        
+    }
 }
