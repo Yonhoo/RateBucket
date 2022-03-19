@@ -123,6 +123,7 @@ class RateBucketApplicationTests {
         private double test = 100;
         private double ds = 231;
         private double d1s =0;
+        private double ds1 = 1;
 
         private void test5Seconds(Supplier<RateBucket> bucket, int threadCount, Function<RateBucket, Long> action) throws Throwable {
             ConsumptionScenario scenario = new ConsumptionScenario(threadCount, TimeUnit.SECONDS.toNanos(5), bucket, action, permittedRatePerSecond);
