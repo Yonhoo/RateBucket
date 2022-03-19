@@ -130,6 +130,8 @@ class RateBucketApplicationTests {
             scenario.executeAndValidateRate();
         }
 
+        private double dsad = 1;
+
         @Test
         void should_try_consume_unsafety() throws Throwable{
             int threadCount = 1; // multi unsafety
