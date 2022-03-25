@@ -5,5 +5,6 @@ public interface RateBucket {
         return new LocalRateBucketBuilder();
     }
     boolean tryConsume(long tokens);
+    
     long getLastRefillNanos();
 }

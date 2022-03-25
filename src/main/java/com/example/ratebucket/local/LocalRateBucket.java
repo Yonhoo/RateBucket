@@ -1,36 +1,32 @@
 package com.example.ratebucket.local;
 
-import com.example.ratebucket.util.BucketExceptions;
-import com.example.ratebucket.util.TimeMeter;
+import java.time.Duration;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class LocalRateBucket extends AbstractRateBucket {
+public abstract class LocalRateBucket extends AbstractRateBucket {
 
-    public LocalRateBucket(long limitPerSecond, TimeMeter timeMeter) {
-        super(limitPerSecond, timeMeter);
+    private long refillPeriodNanos;
+    private long capacity;
+    private long refillTokens;
+
+    public LocalRateBucket(long limitPerSecond) {
+        this.refillPeriodNanos = Duration.ofSeconds(1).toNanos();
+        this.capacity = limitPerSecond;
+        this.refillTokens = limitPerSecond;
     }
 
-    @Override
-    public boolean tryConsume(long tokens) {
-
-        if (tokens <= 0) {
-            throw BucketExceptions.nonPositiveCapacity(tokens);
-        }
+    public void refillBandWith(BandWith bandWith, long currentTimeNanos) {
 
         // compute available tokens
-        long lastTimeRefillNanos = getLastRefillNanos();
-        long currentAvailableTokens = getAvailableTokens();
-        long currentTimeNanos = getCurrentTimeNanos();
-        long refillPeriodNanos = getRefillPeriodNanos();
-        long refillTokens = getRefillTokens();
+        long lastTimeRefillNanos = bandWith.getLastRefillNanos();
+        long currentAvailableTokens = bandWith.getAvailableTokens();
         long newAvailableTokens = currentAvailableTokens;
         long durationSinceLastRefillNanos = currentTimeNanos - lastTimeRefillNanos;
 
-        // duration < period and tokens not enough: return false
-        if (currentAvailableTokens < tokens && durationSinceLastRefillNanos < refillPeriodNanos) {
-            return false;
+        if (durationSinceLastRefillNanos < refillPeriodNanos) {
+            return;
         }
 
         long periods = durationSinceLastRefillNanos / refillPeriodNanos;
@@ -40,7 +36,7 @@ public class LocalRateBucket extends AbstractRateBucket {
         }
         durationSinceLastRefillNanos %= refillPeriodNanos;
 
-        long roundingError = getRoundingError();
+        long roundingError = bandWith.getRoundingError();
         long divided = multipleExact(durationSinceLastRefillNanos, refillTokens);
         divided = addExact(divided, roundingError);
         if (divided == Long.MAX_VALUE) {
@@ -57,19 +53,14 @@ public class LocalRateBucket extends AbstractRateBucket {
             }
         }
 
-        long newSize = newAvailableTokens - tokens;
-        if (newSize < 0) {
-            return false;
+        if (this.capacity <= newAvailableTokens) {
+            newAvailableTokens = this.capacity;
+            roundingError = 0;
         }
 
-        if (getCapacity() <= newSize) {
-            resetBandWith();
-        }
-
-        setAvailableTokens(newSize);
-        setRoundingError(roundingError);
-        setLastRefillNanos(currentTimeNanos);
-        return true;
+        bandWith.setAvailableTokens(newAvailableTokens);
+        bandWith.setRoundingError(roundingError);
+        bandWith.setLastRefillNanos(currentTimeNanos);
     }
 
     private long addExact(long a, long b) {
@@ -88,8 +79,14 @@ public class LocalRateBucket extends AbstractRateBucket {
         }
     }
 
-    private void resetBandWith() {
-        this.setAvailableTokens(getCapacity());
-        this.setRoundingError(0);
+    public void resetBandWith(BandWith bandWith) {
+        bandWith.setAvailableTokens(this.capacity);
+        bandWith.setRoundingError(0L);
     }
+
+    public long getCapacity() {
+        return capacity;
+    }
+
+    
 }

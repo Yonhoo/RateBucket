@@ -17,8 +17,8 @@ public class LocalRateBucketBuilder {
     private TimeMeter timeMeter = TimeMeter.SYSTEM_NANOTIME;
 
     private boolean threadSafety;
-    // private SynchronizationStrategy synchronizationStrategy =
-    // SynchronizationStrategy.LOCK_FREE;
+
+    private long initialTokens;
 
     public LocalRateBucketBuilder withLimitPerSecond(long limit) {
         if (limit <= 0) {
@@ -28,15 +28,23 @@ public class LocalRateBucketBuilder {
         return this;
     }
 
-    public LocalRateBucketBuilder withThreadSafety() {
+    public LocalRateBucketBuilder withSynchronize() {
         this.threadSafety = true;
         return this;
     }
 
+    public LocalRateBucketBuilder withInitialTokens(long initialTokens) {
+        this.initialTokens = initialTokens;
+        return this;
+    }
+
     public RateBucket build() {
-        if (threadSafety) {
-            return new SynchronizedBucket(limit, timeMeter, new ReentrantLock());
+        if (limit < initialTokens) {
+            BucketExceptions.initialTokensOverLimit(initialTokens);
         }
-        return new LocalRateBucket(limit, timeMeter);
+        if (threadSafety) {
+            return new SynchronizedBucket(limit, timeMeter, new ReentrantLock(), initialTokens);
+        }
+        return new LocalFreeBucket(limit, timeMeter, initialTokens);
     }
 }
